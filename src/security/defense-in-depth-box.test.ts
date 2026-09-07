@@ -1951,4 +1951,47 @@ describeDefense("DefenseInDepthBox", () => {
   });
 });
 
+// Unlike the suite above, these tests are NOT gated on
+// `node:module.registerHooks` availability: they cover activation and the
+// Module._load/_resolveFilename patches, which don't depend on ESM loader
+// hooks and must keep working on runtimes (e.g. Bun) that lack them.
+describe("DefenseInDepthBox activation across module-property shapes", () => {
+  beforeEach(() => {
+    DefenseInDepthBox.resetInstance();
+  });
+
+  afterEach(() => {
+    DefenseInDepthBox.resetInstance();
+  });
+
+  it("activates without patch failures on Module._load/_resolveFilename", () => {
+    const box = DefenseInDepthBox.getInstance(true);
+    const handle = box.activate();
+    expect(box.getPatchFailures()).toEqual([]);
+    expect(box.getStatus().state).toBe("enabled");
+    handle.deactivate();
+  });
+
+  it("still blocks a sandboxed Module._resolveFilename call after activation", async () => {
+    const box = DefenseInDepthBox.getInstance(true);
+    const handle = box.activate();
+
+    let error: Error | undefined;
+    await handle.run(async () => {
+      try {
+        const ModuleClass =
+          (nodeModule as { Module?: unknown }).Module ??
+          (nodeModule as { default?: unknown }).default;
+        // biome-ignore lint/suspicious/noExplicitAny: exercising the raw Module API
+        (ModuleClass as any)._resolveFilename("node:path", {});
+      } catch (e) {
+        error = e as Error;
+      }
+    });
+
+    handle.deactivate();
+    expect(error).toBeInstanceOf(SecurityViolationError);
+  });
+});
+
 import * as nodeModule from "node:module";
