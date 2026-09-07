@@ -2190,9 +2190,16 @@ export class DefenseInDepthBox {
         prop,
         descriptor,
       });
+      // Build a fresh data descriptor rather than spreading `descriptor`:
+      // some runtimes (e.g. Bun's node:module shim) expose this property as
+      // an accessor (get/set), and a descriptor object can't mix `value`
+      // with `get`/`set` — defineProperty throws "Invalid property" if we
+      // spread an accessor descriptor and add `value` on top of it.
       Object.defineProperty(ModuleClass, prop, {
-        ...descriptor,
         value: proxy,
+        writable: true,
+        configurable: descriptor.configurable,
+        enumerable: descriptor.enumerable,
       });
 
       const installed = Object.getOwnPropertyDescriptor(ModuleClass, prop);
