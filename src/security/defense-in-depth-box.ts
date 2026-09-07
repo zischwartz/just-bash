@@ -699,6 +699,9 @@ export class DefenseInDepthBox {
     if (target === Error) {
       return `Error.${prop}`;
     }
+    if (target === URL) {
+      return `URL.${prop}`;
+    }
     // For prototype targets, try to identify them
     if (target === Function.prototype) {
       return `Function.prototype.${prop}`;

@@ -377,6 +377,24 @@ export function getBlockedGlobals(): BlockedGlobal[] {
     // 1. It may not exist in all environments (ESM)
     // 2. import() is the modern escape vector and can't be blocked this way
 
+    // Blob URL creation. `import("blob:...")` is one of the two dynamic-import
+    // escape vectors that only the ESM loader hook (registerHooks) in
+    // defense-in-depth-box.ts can catch, because a blob: URL has no
+    // filename for Module._resolveFilename's patch to see. On a runtime
+    // without registerHooks (e.g. Bun), that hook never installs — so it's
+    // the ONLY other place a blob: URL exploit route can be closed: if
+    // sandboxed code can never mint a blob: URL in the first place, there's
+    // nothing for a later `import("blob:...")` to resolve. This does NOT
+    // cover `data:` URLs, which need no prior creation step at all.
+    {
+      prop: "createObjectURL",
+      target: URL,
+      violationType: "blob_url_creation",
+      strategy: "throw",
+      reason:
+        "URL.createObjectURL could mint a blob: URL for later dynamic import(), one of the two escape vectors ESM loader hooks exist to block",
+    },
+
     // Reference leak vectors
     {
       prop: "WeakRef",
